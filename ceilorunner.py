@@ -55,6 +55,7 @@ def parse_args(args):
 
     arg_parser.add_argument('--num-threads', type=int, default=1)
     arg_parser.add_argument('--num-iterations', type=int, default=1)
+    arg_parser.add_argument('--print-stats', action='store_true', desc="Prints per thread stats")
     #arg_parser.add_argument('--input-file', default="~/.inputceilorunner")
 
     return arg_parser.parse_known_args()
@@ -154,13 +155,12 @@ def main(args=None):
         total_runtimes = []
         for i, t in enumerate(threads):
             t.join()
-            #t.print_stats()
-            if t.error_flag:
+            if local_args.print_stats or t.error_flag: 
                 t.print_stats()
             total_runtimes = total_runtimes + t.run_times
 
         gt_60 = sum(1 for t in threads if t.max > 60.0)
-        print "Threads that are greater than 60 secs %d", gt_60
+        print "Threads that have an iteration that ran greater than 60 secs %d", gt_60
 
         print "num iter / thread, numthreads, ave, min, max = %d\t%d\t%f\t%f\t%f" % \
               (local_args.num_iterations, len(threads),
