@@ -43,10 +43,14 @@ def do_statistics(client, args):
 Uses the env if no authentication args are given
 """
 def get_ceilometer_api_client(args):
+    
     s = CeilometerShell()
-    api_version, parsed_args = s.parse_args(args)
+    ret_value = s.parse_args(args)
+    if isinstance(ret_value, tuple):
+        api_version, parsed_args = s.parse_args(args)
 
-    return parsed_args, ceiloclient.get_client(api_version, **(parsed_args.__dict__))
+        return parsed_args, ceiloclient.get_client(api_version, **(parsed_args.__dict__))
+    return None, None
 
 def parse_args(args):
     arg_parser = argparse.ArgumentParser(
@@ -55,7 +59,7 @@ def parse_args(args):
 
     arg_parser.add_argument('--num-threads', type=int, default=1)
     arg_parser.add_argument('--num-iterations', type=int, default=1)
-    arg_parser.add_argument('--print-stats', action='store_true', desc="Prints per thread stats")
+    arg_parser.add_argument('--print-stats', action='store_true', help="Prints per thread stats")
     #arg_parser.add_argument('--input-file', default="~/.inputceilorunner")
 
     return arg_parser.parse_known_args()
@@ -144,30 +148,32 @@ def main(args=None):
 
         local_args, ceilo_args = parse_args(args)
         ceilo_client_args, client = get_ceilometer_api_client(ceilo_args)
+        
+        if ceilo_client_args:
+            threads = []
+            for _ in range(local_args.num_threads):
+                t = CeiloCommandThread(local_args.num_iterations,
+                                       client, ceilo_client_args.func, ceilo_client_args)
+                threads.append(t)
+                t.start()
 
-        threads = []
-        for _ in range(local_args.num_threads):
-            t = CeiloCommandThread(local_args.num_iterations,
-                                   client, ceilo_client_args.func, ceilo_client_args)
-            threads.append(t)
-            t.start()
+            total_runtimes = []
+            for i, t in enumerate(threads):
+                t.join()
+                if local_args.print_stats or t.error_flag: 
+                    t.print_stats()
+                total_runtimes = total_runtimes + t.run_times
 
-        total_runtimes = []
-        for i, t in enumerate(threads):
-            t.join()
-            if local_args.print_stats or t.error_flag: 
-                t.print_stats()
-            total_runtimes = total_runtimes + t.run_times
+            gt_60 = sum(1 for t in threads if t.max > 60.0)
+            print "Threads that have an iteration that ran greater than 60 secs", gt_60
 
-        gt_60 = sum(1 for t in threads if t.max > 60.0)
-        print "Threads that have an iteration that ran greater than 60 secs %d", gt_60
-
-        print "num iter / thread, numthreads, ave, min, max = %d\t%d\t%f\t%f\t%f" % \
-              (local_args.num_iterations, len(threads),
-               sum(total_runtimes)/len(total_runtimes), min(total_runtimes), max(total_runtimes))
+            print "num iter / thread, numthreads, ave, min, max = %d\t%d\t%f\t%f\t%f" % \
+                  (local_args.num_iterations, len(threads),
+                   sum(total_runtimes)/len(total_runtimes), min(total_runtimes), max(total_runtimes))
 
     except Exception as e:
         print "CeiloRunner: Unknown error ", str(e)
+        raise
 
 if __name__ == "__main__":
     main()
