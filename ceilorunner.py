@@ -39,6 +39,12 @@ def do_statistics(client, args):
                 'aggregates': aggregates}
     statistics = client.statistics.list(**api_args)
 
+def do_sample_list(client, args):
+    fields = {'meter_name': args.meter,
+              'q': options.cli_to_array(args.query),
+              'limit': args.limit}
+    samples = client.samples.list(**fields)
+
 """
 Uses the env if no authentication args are given
 """
