@@ -32,6 +32,8 @@ import datetime
 import logging
 import random
 import sys
+import time
+import threading
 
 from oslo.config import cfg
 from oslo.utils import timeutils
@@ -39,7 +41,9 @@ from oslo.utils import timeutils
 from ceilometer.publisher import utils
 from ceilometer import sample
 from ceilometer import storage
-
+from sqlalchemy import func
+from ceilometer.storage.sqlalchemy.models import Sample as DBSample
+from ceilocommandthread import CeiloCommandThread
 
 def make_test_data(conn, name, meter_type, unit, volume, random_min,
                    random_max, user_id, project_id, resource_id, start,
@@ -61,8 +65,12 @@ def make_test_data(conn, name, meter_type, unit, volume, random_min,
     # Generate events
     n = 0
     total_volume = volume
-    meter_names = ["mname%d" % i for i in range(1, 50, 1)]
-    resource_ids = range(1, 500, 1)
+    meter_names = ["meter" + name + str(i) for i in range(1, 50, 1)]
+    resource_ids = ["resource" + resource_id + str(i) for i in range(1, 500, 1)]
+
+    id = threading.current_thread().ident
+
+    t0 = time.time()
     while timestamp <= end:
         if (random_min >= 0 and random_max >= 0):
             # If there is a random element defined, we will add it to
@@ -90,6 +98,9 @@ def make_test_data(conn, name, meter_type, unit, volume, random_min,
         conn.record_metering_data(data)
         n += 1
         timestamp = timestamp + increment
+        t1 = time.time()
+        if not n % 100:
+            print ("id, samp_count, avg, ts: %d, %d, %f, %f" % (id, n, (n / (t1 - t0)), t1))
 
         if (meter_type == 'gauge' or meter_type == 'delta'):
             # For delta and gauge, we don't want to increase the value
@@ -97,8 +108,14 @@ def make_test_data(conn, name, meter_type, unit, volume, random_min,
             # volume.
             total_volume = volume
 
-    print('Added %d new events for meter %s.' % (n, name))
+    t1 = time.time()
+    totaltime = t1 - t0
 
+    print('Id %d Added %d samples total time %f sec avg: %f samples/sec ts: %f' % (id, n, totaltime, (n / totaltime), t1))
+
+def get_current_sample_count(conn):
+    session = conn._engine_facade.get_session()
+    return session.query(func.count(DBSample.id)).scalar()
 
 def main():
     cfg.CONF([], project='ceilometer')
@@ -115,11 +132,13 @@ def main():
     parser.add_argument(
         '--start',
         default=31,
+        type=int,
         help='The number of days in the past to start timestamps.',
     )
     parser.add_argument(
         '--end',
         default=2,
+        type=int,
         help='The number of days into the future to continue timestamps.',
     )
     parser.add_argument(
@@ -154,6 +173,12 @@ def main():
         default=0,
     )
     parser.add_argument(
+        '--num-threads',
+        help='Number of parallel threads',
+        type=int,
+        default=1,
+    )
+    parser.add_argument(
         'resource',
         help='The resource id for the meter data.',
     )
@@ -180,6 +205,7 @@ def main():
 
     # Connect to the metering database
     conn = storage.get_connection_from_config(cfg.CONF)
+    start_sample_rows = get_current_sample_count(conn)
 
     # Find the user and/or project for a real resource
     if not (args.user or args.project):
@@ -193,21 +219,39 @@ def main():
     start = datetime.datetime.utcnow() - datetime.timedelta(days=args.start)
     end = datetime.datetime.utcnow() + datetime.timedelta(days=args.end)
 
-    make_test_data(conn = conn,
-                   name=args.counter,
-                   meter_type=args.type,
-                   unit=args.unit,
-                   volume=args.volume,
-                   random_min=args.random_min,
-                   random_max=args.random_max,
-                   user_id=args.user,
-                   project_id=args.project,
-                   resource_id=args.resource,
-                   start=start,
-                   end=end,
-                   interval=args.interval,
-                   resource_metadata={},
-                   source='artificial',)
+    kwargs = dict(conn=conn,
+                  name=args.counter,
+                  meter_type=args.type,
+                  unit=args.unit,
+                  volume=args.volume,
+                  random_min=args.random_min,
+                  random_max=args.random_max,
+                  user_id=args.user,
+                  project_id=args.project,
+                  resource_id=args.resource,
+                  start=start,
+                  end=end,
+                  interval=args.interval,
+                  resource_metadata={},
+                  source='artificial')
+
+    threads = []
+    for _ in range(args.num_threads):
+        t = CeiloCommandThread(1, make_test_data, **kwargs)
+        threads.append(t)
+        t.start()
+
+    total_runtimes = []
+    for i, t in enumerate(threads):
+        t.join()
+        total_runtimes = total_runtimes + t.run_times
+
+    end_sample_rows = get_current_sample_count(conn)
+    print ("Samples count in DB beginning: %d end: %d" % (start_sample_rows, end_sample_rows))
+
+    #print ("numthreads, ave, min, max = %d\t%f\t%f\t%f" % \
+    #          (len(threads), sum(total_runtimes)/len(total_runtimes), 
+    #          min(total_runtimes), max(total_runtimes)))
 
     return 0
 

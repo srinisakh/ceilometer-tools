@@ -124,8 +124,10 @@ class CeiloCommandThread(threading.Thread):
 
     def print_stats(self):
         print "Function %s took %f sec (avg=%f, min=%f, max=%f) for %d iterations (%s)" \
-              % (self.name, self.sum, self.avg, self.min, self.max, self.num_iterations, self.error)
+              % (self.name, self.sum, self.avg, self.min, self.max, len(self.run_times), self.error)
 
+    def print_curr_stats(self):
+        print "id, fname, avg, ts: %d, %s, %f, %f" % (self.ident, self.name, self.avg, time.time())
 
     def get_function_to_call(self, shell_func):
         replace_function = globals().get(shell_func.__name__, None)
@@ -142,6 +144,7 @@ class CeiloCommandThread(threading.Thread):
                 finally:
                     t1 = time.time()
                     self.run_times.append(t1 - t0)
+                    self.print_curr_stats()
         except Exception as e:
             self.error_flag = True
             self.error_str = "error occured in thread %s" % str(e)
