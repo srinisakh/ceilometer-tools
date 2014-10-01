@@ -70,6 +70,8 @@ def make_test_data(conn, name, meter_type, unit, volume, random_min,
 
     id = threading.current_thread().ident
 
+    print("id, curr_sampl_count, avg, s")
+
     t0 = time.time()
     while timestamp <= end:
         if (random_min >= 0 and random_max >= 0):
@@ -99,8 +101,8 @@ def make_test_data(conn, name, meter_type, unit, volume, random_min,
         n += 1
         timestamp = timestamp + increment
         t1 = time.time()
-        if not n % 100:
-            print ("id, samp_count, avg, ts: %d, %d, %f, %f" % (id, n, (n / (t1 - t0)), t1))
+        if not n % 1000:
+            print ("%d, %d, %f, %f" % (id, get_current_sample_count(conn), (n / (t1 - t0)), t1))
 
         if (meter_type == 'gauge' or meter_type == 'delta'):
             # For delta and gauge, we don't want to increase the value
@@ -110,6 +112,7 @@ def make_test_data(conn, name, meter_type, unit, volume, random_min,
 
     t1 = time.time()
     totaltime = t1 - t0
+    print ("%d, %d, %f, %f" % (id, get_current_sample_count(conn), (n / (t1 - t0)), t1))
 
     print('Id %d Added %d samples total time %f sec avg: %f samples/sec ts: %f' % (id, n, totaltime, (n / totaltime), t1))
 
