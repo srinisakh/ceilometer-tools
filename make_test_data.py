@@ -240,6 +240,8 @@ def main():
 
     threads = []
     for _ in range(args.num_threads):
+        #New connection for each thread
+        kwargs['conn'] = storage.get_connection_from_config(cfg.CONF)
         t = CeiloCommandThread(1, make_test_data, **kwargs)
         threads.append(t)
         t.start()

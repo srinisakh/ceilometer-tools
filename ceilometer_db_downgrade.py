@@ -4,8 +4,9 @@ from ceilometer import storage
 from oslo.config import cfg
 import os
 
-VERSION_TO_DOWNGRADE=37
-PATH_TO_MIGRATE_REPO='/opt/stack/ceilometer/ceilometer/storage/sqlalchemy/migrate_repo'
+VERSION_TO_DOWNGRADE=36
+#PATH_TO_MIGRATE_REPO='/opt/stack/ceilometer/ceilometer/storage/sqlalchemy/migrate_repo'
+PATH_TO_MIGRATE_REPO='/opt/stack/venvs/openstack/lib/python2.7/site-packages/ceilometer/storage/sqlalchemy/migrate_repo'
 
 service.prepare_service()
 conn = storage.get_connection_from_config(cfg.CONF)
