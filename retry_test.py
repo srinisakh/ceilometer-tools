@@ -61,19 +61,21 @@ def _db_error_filter(exc):
 
 
 #@retry(retry_on_exception=_db_error_filter, wait_fixed=500, stop_max_attempt_number=50) 
-@retry(wait_fixed=500, stop_max_attempt_number=50) 
-def get_connection():
-    print("Retrying....")
-    return storage.get_connection_from_config(cfg.CONF)
+#@retry(wait_fixed=500, stop_max_attempt_number=50) 
+#def get_connection():
 
 def main():
     # Connect to the metering database
     cfg.CONF([], project='ceilometer')
-    conn = get_connection()
-    print("Going for sleep for 20 secs")
-    time.sleep(20)
-
-    conn.get_meters()
+    conn = storage.get_connection_from_config(cfg.CONF)
+    print("Connection succeeded trying get_meters")
+    res = conn.get_meters()
+    print("1 Number of meters: %d" % sum(1 for i in res))
+    res = conn.get_meters()
+    print("2 Number of meters: %d" % sum(1 for i in res))
+    res = conn.get_meters()
+    print("3 Number of meters: %d" % sum(1 for i in res))
+    
 
 if __name__ == '__main__':
     main()
