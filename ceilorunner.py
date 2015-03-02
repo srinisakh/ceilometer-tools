@@ -37,13 +37,13 @@ def do_statistics(client, args):
                 'period': args.period,
                 'groupby': args.groupby,
                 'aggregates': aggregates}
-    statistics = client.statistics.list(**api_args)
+    return client.statistics.list(**api_args)
 
 def do_sample_list(client, args):
     fields = {'meter_name': args.meter,
               'q': options.cli_to_array(args.query),
               'limit': args.limit}
-    samples = client.samples.list(**fields)
+    return client.samples.list(**fields)
 
 """
 Uses the env if no authentication args are given
@@ -126,8 +126,8 @@ class CeiloCommandThread(threading.Thread):
         print "Function %s took %f sec (avg=%f, min=%f, max=%f) for %d iterations (%s)" \
               % (self.name, self.sum, self.avg, self.min, self.max, len(self.run_times), self.error)
 
-    def print_curr_stats(self):
-        print "id, fname, avg, ts: %d, %s, %f, %f" % (self.ident, self.name, self.avg, time.time())
+    def print_curr_stats(self, curr_time, bytesize):
+        print "id, fname, curr_time, bytesize, curr_avg, s: %d, %s, %f, %d, %f, %f" % (self.ident, self.name, curr_time, bytesize, self.avg, time.time())
 
     def get_function_to_call(self, shell_func):
         replace_function = globals().get(shell_func.__name__, None)
@@ -139,12 +139,13 @@ class CeiloCommandThread(threading.Thread):
             self.run_times = []
             for _ in range(self.num_iterations):
                 t0 = time.time()
+                res = None
                 try:
-                    self.func(self.client, self.args)
+                    res = self.func(self.client, self.args)
                 finally:
                     t1 = time.time()
                     self.run_times.append(t1 - t0)
-                    self.print_curr_stats()
+                    self.print_curr_stats(t1 - t0, sys.getsizeof(res) if res else 0)
         except Exception as e:
             self.error_flag = True
             self.error_str = "error occured in thread %s" % str(e)
@@ -164,6 +165,7 @@ def main(args=None):
                 t = CeiloCommandThread(local_args.num_iterations,
                                        client, ceilo_client_args.func, ceilo_client_args)
                 threads.append(t)
+                #t.run()
                 t.start()
 
             total_runtimes = []
