@@ -48,17 +48,15 @@ def generate_data(rpc_client, make_data_args, samples_count,
                             datetime.timedelta(minutes=samples_count))
     make_data_args.end = datetime.datetime.utcnow()
 
-    make_data_args.resource_id = None
-    resources_list = [str(uuid.uuid4())
+    resource_list = [str(uuid.uuid4())
                       for _ in xrange(resources_count)]
-    resource_samples = {resource: 0 for resource in resources_list}
+    resource_samples = {resource: 0 for resource in resource_list}
+    make_data_args.resource_list = resource_list
     batch = []
     count = 0
     for sample in make_test_data.make_test_data(**make_data_args.__dict__):
         count += 1
-        resource = resources_list[random.randint(0, len(resources_list) - 1)]
-        resource_samples[resource] += 1
-        sample['resource_id'] = resource
+        resource_samples[sample['resource_id']] += 1
         batch.append(sample)
         if len(batch) == batch_size:
             send_batch(rpc_client, topic, batch)

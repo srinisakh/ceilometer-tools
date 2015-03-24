@@ -39,7 +39,7 @@ from ceilometer import storage
 
 
 def make_test_data(name, meter_type, unit, volume, random_min,
-                   random_max, user_id, project_id, resource_id, start,
+                   random_max, user_id, project_id, resource_id, resource_list, start,
                    end, interval, resource_metadata=None, source='artificial'):
     resource_metadata = resource_metadata or {}
     # Compute start and end timestamps for the new data.
@@ -72,15 +72,15 @@ def make_test_data(name, meter_type, unit, volume, random_min,
                           volume=total_volume,
                           user_id=user_id,
                           project_id=project_id,
-                          resource_id=resource_id,
-                          timestamp=timestamp,
+                          resource_id=resource_list[random.randint(0, len(resource_list) - 1)],
+                          timestamp=timestamp.isoformat(),
                           resource_metadata=resource_metadata,
                           source=source,
                           )
         #data = utils.meter_message_from_counter(
         #    c, cfg.CONF.publisher.telemetry_secret)
         data = utils.meter_message_from_counter(
-             c, "telemetry_secret")
+             c, cfg.CONF.publisher.metering_secret)
 
         yield data
         n += 1
