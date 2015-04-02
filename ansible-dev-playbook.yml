@@ -32,4 +32,7 @@
         - libsasl2-dev # python-ldap
         - libssl-dev # python-ldap
         - graphviz
+        - python-dev
+        - gettext
+        - python-tox
 
