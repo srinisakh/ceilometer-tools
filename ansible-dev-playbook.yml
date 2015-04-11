@@ -27,6 +27,7 @@
         - pgadmin3 # sahara tests
         - python-pymongo # ceilometer
         - mongodb-server # ceilometer
+        - mongodb # ceilometer
         - libnspr4-dev # ceilometer
         - libldap2-dev # python-ldap
         - libsasl2-dev # python-ldap
