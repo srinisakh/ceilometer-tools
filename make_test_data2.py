@@ -77,10 +77,10 @@ def make_test_data(name, meter_type, unit, volume, random_min,
                           resource_metadata=resource_metadata,
                           source=source,
                           )
-        #data = utils.meter_message_from_counter(
-        #    c, cfg.CONF.publisher.telemetry_secret)
         data = utils.meter_message_from_counter(
-             c, cfg.CONF.publisher.metering_secret)
+            c, cfg.CONF.publisher.telemetry_secret)
+        #data = utils.meter_message_from_counter(
+        #     c, cfg.CONF.publisher.metering_secret)
 
         yield data
         n += 1
@@ -161,7 +161,6 @@ def get_parser():
     parser.add_argument(
         '--resource',
         dest='resource_id',
-        default=str(uuid.uuid4()),
         help='The resource id for the meter data.',
     )
     parser.add_argument(
@@ -181,6 +180,8 @@ def get_parser():
 
 def main():
     cfg.CONF([], project='ceilometer')
+    # Connect to the metering database
+    conn = storage.get_connection_from_config(cfg.CONF)
 
     args = get_parser().parse_args()
 
@@ -193,8 +194,6 @@ def main():
     root_logger.addHandler(console)
     root_logger.setLevel(logging.DEBUG)
 
-    # Connect to the metering database
-    conn = storage.get_connection_from_config(cfg.CONF)
 
     # Find the user and/or project for a real resource
     if not (args.user_id or args.project_id):
@@ -226,6 +225,9 @@ def main():
             raise
     args.start = start
     args.end = end
+
+    args.resource_list = [str(uuid.uuid4()) for _ in xrange(100)]
+
     record_test_data(conn=conn, **args.__dict__)
 
     return 0

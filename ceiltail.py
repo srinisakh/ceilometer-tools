@@ -24,6 +24,7 @@ import shlex
 import signal
 import socket
 import subprocess
+import syslog
 import time
 from optparse import OptionParser, OptionGroup
 
@@ -258,6 +259,8 @@ while 1:
 
 	if debug & 8:
 	    time.sleep(0.01)
+
+        ltype.translate(None, ":")
 
 	counted = True
 	if ltype not in counters:
