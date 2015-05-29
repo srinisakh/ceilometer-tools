@@ -4,8 +4,10 @@ import datetime
 from monascaclient import client
 from monascaclient import ksclient
 
-endpoint = "http://192.168.10.4:8080/v2.0"
-auth_url = "http://192.168.10.5:35357/v3/"
+#endpoint = "http://192.168.10.4:8080/v2.0"
+#auth_url = "http://192.168.10.5:35357/v3/"
+endpoint = "http://127.0.0.1:8080/v2.0"
+auth_url = "http://127.0.0.1:35357/v3/"
 
 
 def mon_client(username, password, auth_url, endpoint):
@@ -42,6 +44,7 @@ for metric in sorted(unique_metrics.keys()):
     statistics = m.list_statistics(name=metric,
                                    statistics="count",
                                    period="1000000000",
+                                   merge_metrics=True,
                                    start_time=start.isoformat())
     for stat in statistics:
         key = stat['name']
